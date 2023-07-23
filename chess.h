@@ -125,16 +125,21 @@ class Board
 				case 'Ы':
 					if (cursor_y < size_y - 1) cursor_y++;
 					break;
-				//CONFIRM
+				//CHOOSE CELL
 				case 'f':
 				case 'F':
 				case 'а':
 				case 'А':
 					if (start_cursor_x == -1 && start_cursor_y == -1) {
+						if (arr[cursor_y][cursor_x] == nullptr) break;
+						if (arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 2) break;
+						if (arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 1) break;
 						start_cursor_x = cursor_x;
 						start_cursor_y = cursor_y;
 					}
 					else { //MAKE A MOVE
+						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 1) break;
+						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 2) break;
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
 						arr[start_cursor_y][start_cursor_x] = nullptr;
 						int x1 = start_cursor_x, y1 = start_cursor_y; //start coords
