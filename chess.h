@@ -18,6 +18,8 @@ class Board
 		int player;
 		int cursor_x;
 		int cursor_y;
+		int start_cursor_x;
+		int start_cursor_y;
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -29,6 +31,8 @@ class Board
 			player = 1;
 			cursor_x = 0;
 			cursor_y = size_y - 1;
+			start_cursor_x = -1;
+			start_cursor_y = -1;
 		}
 		~Board() {
 			for (int row = 0; row < size_y; row++) {
@@ -40,6 +44,8 @@ class Board
 			delete[] arr;
 		}
 		void ShowCell(int row, int col, bool IsCursor = false) {
+
+			if (row == start_cursor_y && col == start_cursor_x) IsCursor = true;
 
 			Colors fg;
 			Colors bg;
@@ -64,9 +70,13 @@ class Board
 			if (arr[row][col]) std::cout << *arr[row][col];
 			SetColor();
 		}
-		void Show() {
+		void ShowPlayer() {
 			Cursor::set(0, 0);
 			std::cout << "Player " << player << ":";
+		}
+		void Show() {
+			system("cls");
+			ShowPlayer();
 			
 			for (int row = 0; row < size_y; row++) {
 				for (int col = 0; col < size_x; col++) {
@@ -115,11 +125,45 @@ class Board
 				case 'Ы':
 					if (cursor_y < size_y - 1) cursor_y++;
 					break;
+				//CONFIRM
+				case 'f':
+				case 'F':
+				case 'а':
+				case 'А':
+					if (start_cursor_x == -1 && start_cursor_y == -1) {
+						start_cursor_x = cursor_x;
+						start_cursor_y = cursor_y;
+					}
+					else { //MAKE A MOVE
+						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
+						arr[start_cursor_y][start_cursor_x] = nullptr;
+						int x1 = start_cursor_x, y1 = start_cursor_y; //start coords
+						int x2 = cursor_x, y2 = cursor_y; //end coords
+						start_cursor_x = -1;
+						start_cursor_y = -1;
+						player = (player == 1 ? 2 : 1);
+						ShowPlayer();
+						ShowCell(y1, x1);
+						ShowCell(y2, x2);
+					}
+					break;
+				//CANCEL
+				case 'x':
+				case 'X':
+				case 'ч':
+				case 'Ч':
+					if (start_cursor_x != -1 && start_cursor_y != -1) {
+						int x = start_cursor_x, y = start_cursor_y; //coords
+						start_cursor_x = -1;
+						start_cursor_y = -1;
+						ShowCell(y,x);
+					}
+					break;
+				//RESHOW
 				case 'r':
 				case 'R':
 				case 'К':
 				case 'к':
-					system("cls");
 					Show();
 					break;
 			}
