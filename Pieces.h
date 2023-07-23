@@ -17,7 +17,8 @@ struct Piece
 	Piece(Types type, Sides side) : type{ type }, side{ side } {}
 	Piece() : Piece(Types::pawn, Sides::white) {}
 
-	void Show() {
-		std::cout << char(type);
+	friend std::ostream& operator<<(std::ostream& out, const Piece& piece) {
+		out << char(piece.type);
+		return out;
 	}
 };

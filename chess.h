@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 #include "Pieces.h"
-
+#include "cursor.h"
+#include "colors.h"
 
 class Board
 {
@@ -9,6 +10,8 @@ class Board
 		int size_y;
 		Piece*** arr;
 		void SetBoard();
+		static int cell_size_x;
+		static int cell_size_y;
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -29,16 +32,32 @@ class Board
 		}
 		//TEST
 		void Show() {
+			Colors fg;
+			Colors bg;
 			for (int row = 0; row < size_y; row++) {
 				for (int col = 0; col < size_x; col++) {
-					if (arr[row][col]) arr[row][col]->Show();
-					else std::cout << ' ';
+					if (row % 2 == col % 2) bg = Colors::white;
+					else bg = Colors::black;
+					if (arr[row][col] && arr[row][col]->side == Piece::Sides::white) fg = Colors::lwhite;
+					else fg = Colors::lblack;
+					Cursor::set(col*cell_size_x, row*cell_size_y);
+					SetColor(fg, bg);
+					for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
+						for (int cell_col = 0; cell_col < cell_size_x; cell_col++){
+							std::cout << ' ';
+						}
+						Cursor::set(col * cell_size_x, row * cell_size_y + cell_row+1);
+					}
+					Cursor::set(col * cell_size_x + (cell_size_x / 2), row * cell_size_y + (cell_size_y / 2));
+					if (arr[row][col]) std::cout << *arr[row][col];
 				}
 				std::cout << std::endl;
 			}
+			SetColor();
 		}
 };
-
+int Board::cell_size_x = 5;
+int Board::cell_size_y = 3;
 
 void Board::SetBoard() {
 	//PAWNS
