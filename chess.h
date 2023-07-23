@@ -2,6 +2,7 @@
 #include "Pieces.h"
 #include "cursor.h"
 #include "colors.h"
+#include <conio.h>
 
 class Board
 {
@@ -12,6 +13,11 @@ class Board
 		void SetBoard();
 		static int cell_size_x;
 		static int cell_size_y;
+		static int boardShow_offset_y;
+		static char cursor_symbol;
+		int player;
+		int cursor_x;
+		int cursor_y;
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -20,6 +26,9 @@ class Board
 				arr[row] = new Piece*[size_x];
 			}
 			SetBoard();
+			player = 1;
+			cursor_x = 0;
+			cursor_y = size_y - 1;
 		}
 		~Board() {
 			for (int row = 0; row < size_y; row++) {
@@ -30,34 +39,105 @@ class Board
 			}
 			delete[] arr;
 		}
-		//TEST
-		void Show() {
+		void ShowCell(int row, int col, bool IsCursor = false) {
+
 			Colors fg;
 			Colors bg;
+
+			if (row % 2 == col % 2) bg = Colors::white;
+			else bg = Colors::black;
+			if (arr[row][col] && arr[row][col]->side == Piece::Sides::white) fg = Colors::lwhite;
+			else fg = Colors::lblack;
+			Cursor::set(col * cell_size_x, row * cell_size_y + boardShow_offset_y);
+			SetColor(fg, bg);
+
+			if (IsCursor) SetColor(Colors::cursor);
+
+			for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
+				for (int cell_col = 0; cell_col < cell_size_x; cell_col++) {
+					if (IsCursor) std::cout << cursor_symbol;
+					else std::cout << ' ';
+				}
+				Cursor::set(col * cell_size_x, row * cell_size_y + cell_row + 1 + boardShow_offset_y);
+			}
+			Cursor::set(col * cell_size_x + (cell_size_x / 2), row * cell_size_y + (cell_size_y / 2) + boardShow_offset_y);
+			if (arr[row][col]) std::cout << *arr[row][col];
+			SetColor();
+		}
+		void Show() {
+			Cursor::set(0, 0);
+			std::cout << "Player " << player << ":";
+			
 			for (int row = 0; row < size_y; row++) {
 				for (int col = 0; col < size_x; col++) {
-					if (row % 2 == col % 2) bg = Colors::white;
-					else bg = Colors::black;
-					if (arr[row][col] && arr[row][col]->side == Piece::Sides::white) fg = Colors::lwhite;
-					else fg = Colors::lblack;
-					Cursor::set(col*cell_size_x, row*cell_size_y);
-					SetColor(fg, bg);
-					for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
-						for (int cell_col = 0; cell_col < cell_size_x; cell_col++){
-							std::cout << ' ';
-						}
-						Cursor::set(col * cell_size_x, row * cell_size_y + cell_row+1);
-					}
-					Cursor::set(col * cell_size_x + (cell_size_x / 2), row * cell_size_y + (cell_size_y / 2));
-					if (arr[row][col]) std::cout << *arr[row][col];
+					ShowCell(row, col);
 				}
 				std::cout << std::endl;
 			}
 			SetColor();
 		}
+		void ShowCursor() {
+			ShowCell(cursor_y, cursor_x, true);
+		}
+		void HideCursor() {
+			ShowCell(cursor_y, cursor_x);
+		}
+		void Press(char key) {
+			HideCursor();
+			switch (key) {
+				//LEFT
+				case 'a':
+				case 'A':
+				case 'ф':
+				case 'Ф':
+					if (cursor_x > 0) cursor_x--;
+					break;
+				//RIGHT
+				case 'd':
+				case 'D':
+				case 'в':
+				case 'В':
+					if (cursor_x < size_x-1) cursor_x++;
+					break;
+				//UP
+				case 'w':
+				case 'W':
+				case 'ц':
+				case 'Ц':
+					if (cursor_y > 0) cursor_y--;
+					break;
+				//DOWN
+				case 's':
+				case 'S':
+				case 'і':
+				case 'І':
+				case 'ы':
+				case 'Ы':
+					if (cursor_y < size_y - 1) cursor_y++;
+					break;
+				case 'r':
+				case 'R':
+				case 'К':
+				case 'к':
+					system("cls");
+					Show();
+					break;
+			}
+			ShowCursor();
+		}
+		void Start() {
+			ShowCursor();
+			char key;
+			while (true) {
+				key = _getch();
+				Press(key);
+			}
+		}
 };
 int Board::cell_size_x = 5;
 int Board::cell_size_y = 3;
+int Board::boardShow_offset_y = 2;
+char Board::cursor_symbol = '#';
 
 void Board::SetBoard() {
 	//PAWNS

@@ -4,5 +4,5 @@ int main()
 {
     Board b;
     b.Show();
-    //b.Start();
+    b.Start();
 }
