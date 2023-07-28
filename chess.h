@@ -18,7 +18,8 @@ class Board
 		bool SetMoveVariants(int, int);
 		void ShowMoveVariants();
 		void HideMoveVariants();
-		void PawnTransform(int, int);
+		void PawnPromotion();
+		Piece::Types PawnPromotionAsk();
 		static int cell_size_x;
 		static int cell_size_y;
 		static int boardShow_offset_y;
@@ -160,7 +161,7 @@ class Board
 						arr[start_cursor_y][start_cursor_x] = nullptr;
 
 						//Check if pawn became a queen
-						PawnTransform(cursor_x, cursor_y);
+						PawnPromotion();
 
 						HideMoveVariants();
 						move_variants.clear();
@@ -396,11 +397,36 @@ void Board::HideMoveVariants() {
 		ShowCell(coords.second, coords.first, false, false);
 	}
 }
-void Board::PawnTransform(int x, int y) {
+void Board::PawnPromotion() {
+	int x = cursor_x;
+	int y = cursor_y;
 	if (x < 0 || x >= size_x || y < 0 || y >= size_y) return;
 	if (arr[y][x] == nullptr) return;
 	if (arr[y][x]->type != Piece::Types::pawn) return;
 	if (arr[y][x]->side == Piece::Sides::white && y != 0) return;
 	if (arr[y][x]->side == Piece::Sides::black && y != size_y-1) return;
-	arr[y][x]->type = Piece::Types::queen;
+	arr[y][x]->type = PawnPromotionAsk();
+	Show();
+}
+Piece::Types Board::PawnPromotionAsk() {
+	Cursor::set(0, size_y * cell_size_y / 2);
+	std::cout << "[Q] - for queen, [R] - for rook, [B] - for bishop, [K] - for knight:";
+	int choice;
+	while (true) {
+		choice = _getch();
+		switch (choice) {
+			case 'q':
+			case 'Q':
+				return Piece::Types::queen;
+			case 'r':
+			case 'R':
+				return Piece::Types::rook;
+			case 'b':
+			case 'B':
+				return Piece::Types::bishop;
+			case 'k':
+			case 'K':
+				return Piece::Types::knight;
+		}
+	}
 }
