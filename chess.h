@@ -14,7 +14,7 @@ class Board
 		int size_y;
 		Piece*** arr;
 		void SetBoard();
-		bool CheckMove(int, int);
+		bool CheckMove();
 		bool SetMoveVariants(int, int);
 		void ShowMoveVariants();
 		void HideMoveVariants();
@@ -28,6 +28,17 @@ class Board
 		int cursor_y;
 		int start_cursor_x;
 		int start_cursor_y;
+
+		std::pair<
+			std::pair<int, int>,
+			std::pair<int, int>
+		> player1_previousMove;
+
+		std::pair<
+			std::pair<int, int>,
+			std::pair<int, int>
+		> player2_previousMove;
+
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -143,19 +154,29 @@ class Board
 					else { //MAKE A MOVE
 						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 1) break;
 						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 2) break;
-						if (CheckMove(cursor_x, cursor_y) == false) break;
+						if (CheckMove() == false) break;
 
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
 						arr[start_cursor_y][start_cursor_x] = nullptr;
 
 						//Check if pawn became a queen
-						PawnTransform(cursor_x,cursor_y);
-						
+						PawnTransform(cursor_x, cursor_y);
+
 						HideMoveVariants();
 						move_variants.clear();
+						if (player == 1){
+							player1_previousMove.first = std::pair<int, int>(start_cursor_x, start_cursor_y);
+							player1_previousMove.second = std::pair<int, int>(cursor_x, cursor_y);
+						}
+						if (player == 2) {
+							player2_previousMove.first = std::pair<int, int>(start_cursor_x, start_cursor_y);
+							player2_previousMove.second = std::pair<int, int>(cursor_x, cursor_y);
+						}
+
 						int x = start_cursor_x, y = start_cursor_y;
 						start_cursor_x = -1;
 						start_cursor_y = -1;
+						
 						player = (player == 1 ? 2 : 1);
 						ShowCell(y, x);
 						ShowPlayer();
@@ -248,11 +269,20 @@ void Board::SetBoard() {
 	}
 }
 
-bool Board::CheckMove(int x, int y) {
-	//found
-	if (move_variants.find(std::pair<int, int>(x, y)) != move_variants.end()) return true;
+bool Board::CheckMove() {
+	std::set<std::pair<int, int>>::iterator ind = move_variants.find(std::pair<int, int>(cursor_x, cursor_y));
 	//not found
-	return false;
+	if (ind == move_variants.end()) return false;
+
+	Piece* p = arr[start_cursor_y][start_cursor_x];
+	if (p->type == Piece::Types::pawn) {
+		if (abs(cursor_x - start_cursor_x) == 1 && arr[cursor_y][cursor_x] == nullptr) //corner & empty
+		{
+			arr[start_cursor_y][cursor_x] = nullptr;
+			ShowCell(start_cursor_y, cursor_x);
+		}
+	}
+	return true;
 }
 
 bool Board::SetMoveVariants(int piece_x, int piece_y) {
@@ -278,22 +308,38 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			//right up enemy
 			if (piece_y >= 1 && piece_x <= size_x-1-1 && arr[piece_y - 1][piece_x + 1] != nullptr && arr[piece_y - 1][piece_x + 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y - 1));
+			//en passant
+			if (piece_y == size_y - 1 - 1 - 3) {
+				if (piece_x >= 1 && arr[piece_y][piece_x - 1] != nullptr
+					&& arr[piece_y][piece_x - 1]->type == Piece::Types::pawn && arr[piece_y][piece_x - 1]->side == Piece::Sides::black
+					&& player2_previousMove.first == std::pair<int,int>(piece_x-1,piece_y-2) //from
+					&& player2_previousMove.second == std::pair<int,int>(piece_x-1,piece_y)) //to
+					move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 1));
+			}
 		}
 
 		//BLACK PAWN
 		if (p->side == Piece::Sides::black) {
 			//down 1
-			if (piece_y <= size_y-1-1 && arr[piece_y + 1][piece_x] == nullptr)
+			if (piece_y <= size_y - 1 - 1 && arr[piece_y + 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 1));
 			//down 2
 			if (piece_y == 1 && arr[piece_y + 2][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 2));
 			//left up enemy
-			if (piece_y <= size_y-1-1 && piece_x >= 1 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
+			if (piece_y <= size_y - 1 - 1 && piece_x >= 1 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y + 1));
 			//right up enemy
-			if (piece_y <= size_y-1-1 && piece_x <= size_x-1-1 && arr[piece_y + 1][piece_x + 1] != nullptr && arr[piece_y + 1][piece_x + 1]->side != p->side)
+			if (piece_y <= size_y - 1 - 1 && piece_x <= size_x - 1 - 1 && arr[piece_y + 1][piece_x + 1] != nullptr && arr[piece_y + 1][piece_x + 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y + 1));
+			//en passant
+			if (piece_y == 4) {
+				if (piece_x <= size_x - 1 - 1 && arr[piece_y][piece_x + 1] != nullptr
+					&& arr[piece_y][piece_x + 1]->type == Piece::Types::pawn && arr[piece_y][piece_x + 1]->side == Piece::Sides::white
+					&& player1_previousMove.first == std::pair<int,int>(piece_x+1, piece_y+2) //from
+					&& player1_previousMove.second == std::pair<int,int>(piece_x+1, piece_y)) //to
+					move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y + 1));
+			}
 		}
 	}
 	
