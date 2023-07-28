@@ -69,7 +69,7 @@ class Board
 			Cursor::set(col * cell_size_x, row * cell_size_y + boardShow_offset_y);
 			SetColor(fg, bg);
 
-			if (IsCursor) SetColor(Colors::cursor);
+			if (IsCursor) SetColor(Colors::cursor, bg);
 			if (Variant) SetColor(Colors::variant_fg, Colors::variant_bg);
 
 			for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
@@ -80,6 +80,8 @@ class Board
 				Cursor::set(col * cell_size_x, row * cell_size_y + cell_row + 1 + boardShow_offset_y);
 			}
 			Cursor::set(col * cell_size_x + (cell_size_x / 2), row * cell_size_y + (cell_size_y / 2) + boardShow_offset_y);
+			if (Variant) bg = Colors::variant_bg;
+			SetColor(fg,bg);
 			if (arr[row][col]) std::cout << *arr[row][col];
 			SetColor();
 		}
@@ -100,7 +102,6 @@ class Board
 			SetColor();
 		}
 		void ShowCursor() {
-			//ShowCell(cursor_y, cursor_x, true);
 			ShowCell(cursor_y, cursor_x);
 		}
 		void HideCursor() {
@@ -147,7 +148,7 @@ class Board
 						arr[start_cursor_y][start_cursor_x] = nullptr;
 
 						//Check if pawn became a queen
-						PawnTransform(cursor_y,cursor_x);
+						PawnTransform(cursor_x,cursor_y);
 
 						move_variants.clear();
 						start_cursor_x = -1;

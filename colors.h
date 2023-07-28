@@ -2,7 +2,7 @@
 #include <windows.h>
 
 enum Colors {
-	white=7, black=8, lwhite = 15, lblack = 0, cursor=14, variant_fg=10,variant_bg=2
+	white=7, black=8, lwhite = 15, lblack = 0, cursor=6, variant_fg=10, variant_bg=2
 };
 
 void SetColor(Colors fg=white, Colors bg=lblack) {
