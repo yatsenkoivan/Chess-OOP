@@ -17,6 +17,7 @@ class Board
 		bool CheckMove(int, int);
 		bool SetMoveVariants(int, int);
 		void ShowMoveVariants();
+		void HideMoveVariants();
 		void PawnTransform(int, int);
 		static int cell_size_x;
 		static int cell_size_y;
@@ -50,14 +51,14 @@ class Board
 			}
 			delete[] arr;
 		}
-		void ShowCell(int row, int col, bool CursorVisible = true) {
+		void ShowCell(int row, int col, bool CursorVisible = true, bool VariantVisible = true) {
 
 			bool Variant=false;
 			bool IsCursor = false;
 
 			if (row == start_cursor_y && col == start_cursor_x) IsCursor = true;
 			if (row == cursor_y && col == cursor_x && CursorVisible) IsCursor = true;
-			if (move_variants.find(std::pair<int, int>(col, row)) != move_variants.end()) Variant = true;
+			if (move_variants.find(std::pair<int, int>(col, row)) != move_variants.end() && VariantVisible) Variant = true;
 
 			Colors fg;
 			Colors bg;
@@ -149,22 +150,27 @@ class Board
 
 						//Check if pawn became a queen
 						PawnTransform(cursor_x,cursor_y);
-
+						
+						HideMoveVariants();
 						move_variants.clear();
+						int x = start_cursor_x, y = start_cursor_y;
 						start_cursor_x = -1;
 						start_cursor_y = -1;
 						player = (player == 1 ? 2 : 1);
-						Show();
+						ShowCell(y, x);
+						ShowPlayer();
 					}
 					break;
 				//CANCEL
 				case 'x':
 				case 'X':
 					if (start_cursor_x != -1 && start_cursor_y != -1) {
+						HideMoveVariants();
 						move_variants.clear();
+						int x = start_cursor_x, y = start_cursor_y;
 						start_cursor_x = -1;
 						start_cursor_y = -1;
-						Show();
+						ShowCell(y, x);
 					}
 					break;
 				//RESHOW
@@ -261,40 +267,87 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 		//WHITE PAWN
 		if (p->side == Piece::Sides::white){
 			//up 1
-			if (piece_y > 0 && arr[piece_y - 1][piece_x] == nullptr)
+			if (piece_y >= 1 && arr[piece_y - 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y-1));
 			//up 2
 			if (piece_y == size_y-1-1 && arr[piece_y - 2][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y - 2));
 			//left up enemy
-			if (piece_y > 0 && piece_x > 0 && arr[piece_y - 1][piece_x - 1] != nullptr && arr[piece_y - 1][piece_x - 1]->side != p->side)
+			if (piece_y >= 1 && piece_x >= 1 && arr[piece_y - 1][piece_x - 1] != nullptr && arr[piece_y - 1][piece_x - 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 1));
 			//right up enemy
-			if (piece_y > 0 && piece_x < size_x - 1 && arr[piece_y - 1][piece_x + 1] != nullptr && arr[piece_y - 1][piece_x + 1]->side != p->side)
+			if (piece_y >= 1 && piece_x <= size_x-1-1 && arr[piece_y - 1][piece_x + 1] != nullptr && arr[piece_y - 1][piece_x + 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y - 1));
 		}
 
 		//BLACK PAWN
 		if (p->side == Piece::Sides::black) {
 			//down 1
-			if (piece_y < size_y-1 && arr[piece_y + 1][piece_x] == nullptr)
+			if (piece_y <= size_y-1-1 && arr[piece_y + 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 1));
 			//down 2
 			if (piece_y == 1 && arr[piece_y + 2][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 2));
 			//left up enemy
-			if (piece_y < size_y-1 && piece_x > 0 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
+			if (piece_y <= size_y-1-1 && piece_x >= 1 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y + 1));
 			//right up enemy
-			if (piece_y < size_y-1 && piece_x < size_x - 1 && arr[piece_y + 1][piece_x + 1] != nullptr && arr[piece_y + 1][piece_x + 1]->side != p->side)
+			if (piece_y <= size_y-1-1 && piece_x <= size_x-1-1 && arr[piece_y + 1][piece_x + 1] != nullptr && arr[piece_y + 1][piece_x + 1]->side != p->side)
 				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y + 1));
 		}
+	}
+	
+	//KNIGHTS
+	/*o - from
+	  x - to  */
+	if (p->type == Piece::Types::knight) {
+		/*x.
+		   .
+		   o*/
+		if (piece_x >= 1 && piece_y >= 2 && (arr[piece_y - 2][piece_x - 1] == nullptr || arr[piece_y - 2][piece_x - 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 2));
+		/*.x
+		  . 
+		  o*/
+		if (piece_x <= size_x-1-1 && piece_y >= 2 && (arr[piece_y - 2][piece_x + 1] == nullptr || arr[piece_y - 2][piece_x + 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y - 2));
+		/*. . x
+		  o    */
+		if (piece_x <= size_x - 1 - 2 && piece_y >= 1 && (arr[piece_y - 1][piece_x + 2] == nullptr || arr[piece_y - 1][piece_x + 2]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 2, piece_y - 1));
+		/*o
+		  . . x*/
+		if (piece_x <= size_x - 1 - 2 && piece_y <= size_y-1-1 && (arr[piece_y + 1][piece_x + 2] == nullptr || arr[piece_y + 1][piece_x + 2]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 2, piece_y + 1));
+		/*o
+		  .
+		  .x*/
+		if (piece_x <= size_x - 1 - 1 && piece_y <= size_y - 1 - 2 && (arr[piece_y + 2][piece_x + 1] == nullptr || arr[piece_y + 2][piece_x + 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y + 2));
+		/* o
+		   .
+		  x.*/
+		if (piece_x >= 1 && piece_y <= size_y - 1 - 2 && (arr[piece_y + 2][piece_x - 1] == nullptr || arr[piece_y + 2][piece_x - 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y + 2));
+		/*    o
+		  x . .*/
+		if (piece_x >= 2 && piece_y <= size_y - 1 - 1 && (arr[piece_y + 1][piece_x - 2] == nullptr || arr[piece_y + 1][piece_x - 2]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 2, piece_y + 1));
+		/*x . .
+		      o*/
+		if (piece_x >= 2 && piece_y >= 1 && (arr[piece_y - 1][piece_x - 2] == nullptr || arr[piece_y - 1][piece_x - 2]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 2, piece_y - 1));
 	}
 	return true;
 }
 void Board::ShowMoveVariants() {
 	for (std::pair<int, int> coords : move_variants) {
 		ShowCell(coords.second, coords.first);
+	}
+}
+void Board::HideMoveVariants() {
+	for (std::pair<int, int> coords : move_variants) {
+		ShowCell(coords.second, coords.first, false, false);
 	}
 }
 void Board::PawnTransform(int x, int y) {
