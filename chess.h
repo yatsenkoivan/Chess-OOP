@@ -3,14 +3,21 @@
 #include "cursor.h"
 #include "colors.h"
 #include <conio.h>
+#include <vector>
+#include <set>
 
 class Board
 {
 	private:
+		std::set<std::pair<int,int>> move_variants;
 		int size_x;
 		int size_y;
 		Piece*** arr;
 		void SetBoard();
+		bool CheckMove(int, int);
+		bool SetMoveVariants(int, int);
+		void ShowMoveVariants();
+		void PawnTransform(int, int);
 		static int cell_size_x;
 		static int cell_size_y;
 		static int boardShow_offset_y;
@@ -43,9 +50,14 @@ class Board
 			}
 			delete[] arr;
 		}
-		void ShowCell(int row, int col, bool IsCursor = false) {
+		void ShowCell(int row, int col, bool CursorVisible = true) {
+
+			bool Variant=false;
+			bool IsCursor = false;
 
 			if (row == start_cursor_y && col == start_cursor_x) IsCursor = true;
+			if (row == cursor_y && col == cursor_x && CursorVisible) IsCursor = true;
+			if (move_variants.find(std::pair<int, int>(col, row)) != move_variants.end()) Variant = true;
 
 			Colors fg;
 			Colors bg;
@@ -58,6 +70,7 @@ class Board
 			SetColor(fg, bg);
 
 			if (IsCursor) SetColor(Colors::cursor);
+			if (Variant) SetColor(Colors::variant_fg, Colors::variant_bg);
 
 			for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
 				for (int cell_col = 0; cell_col < cell_size_x; cell_col++) {
@@ -87,10 +100,11 @@ class Board
 			SetColor();
 		}
 		void ShowCursor() {
-			ShowCell(cursor_y, cursor_x, true);
+			//ShowCell(cursor_y, cursor_x, true);
+			ShowCell(cursor_y, cursor_x);
 		}
 		void HideCursor() {
-			ShowCell(cursor_y, cursor_x);
+			ShowCell(cursor_y, cursor_x, false);
 		}
 		void Press(char key) {
 			HideCursor();
@@ -98,77 +112,63 @@ class Board
 				//LEFT
 				case 'a':
 				case 'A':
-				case 'ф':
-				case 'Ф':
 					if (cursor_x > 0) cursor_x--;
 					break;
 				//RIGHT
 				case 'd':
 				case 'D':
-				case 'в':
-				case 'В':
 					if (cursor_x < size_x-1) cursor_x++;
 					break;
 				//UP
 				case 'w':
 				case 'W':
-				case 'ц':
-				case 'Ц':
 					if (cursor_y > 0) cursor_y--;
 					break;
 				//DOWN
 				case 's':
 				case 'S':
-				case 'і':
-				case 'І':
-				case 'ы':
-				case 'Ы':
 					if (cursor_y < size_y - 1) cursor_y++;
 					break;
 				//CHOOSE CELL
 				case 'f':
 				case 'F':
-				case 'а':
-				case 'А':
 					if (start_cursor_x == -1 && start_cursor_y == -1) {
-						if (arr[cursor_y][cursor_x] == nullptr) break;
-						if (arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 2) break;
-						if (arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 1) break;
+						if (SetMoveVariants(cursor_x, cursor_y) == false) break;
+						ShowMoveVariants();
 						start_cursor_x = cursor_x;
 						start_cursor_y = cursor_y;
 					}
 					else { //MAKE A MOVE
 						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 1) break;
 						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 2) break;
+						if (CheckMove(cursor_x, cursor_y) == false) break;
+
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
 						arr[start_cursor_y][start_cursor_x] = nullptr;
-						int x1 = start_cursor_x, y1 = start_cursor_y; //start coords
-						int x2 = cursor_x, y2 = cursor_y; //end coords
+
+						//Check if pawn became a queen
+						PawnTransform(cursor_y,cursor_x);
+
+						move_variants.clear();
 						start_cursor_x = -1;
 						start_cursor_y = -1;
 						player = (player == 1 ? 2 : 1);
-						ShowPlayer();
-						ShowCell(y1, x1);
-						ShowCell(y2, x2);
+						Show();
 					}
 					break;
 				//CANCEL
 				case 'x':
 				case 'X':
-				case 'ч':
-				case 'Ч':
 					if (start_cursor_x != -1 && start_cursor_y != -1) {
-						int x = start_cursor_x, y = start_cursor_y; //coords
+						move_variants.clear();
 						start_cursor_x = -1;
 						start_cursor_y = -1;
-						ShowCell(y,x);
+						Show();
 					}
 					break;
 				//RESHOW
 				case 'r':
 				case 'R':
-				case 'К':
-				case 'к':
 					Show();
 					break;
 			}
@@ -239,4 +239,68 @@ void Board::SetBoard() {
 			arr[row][col] = nullptr;
 		}
 	}
+}
+
+bool Board::CheckMove(int x, int y) {
+	//found
+	if (move_variants.find(std::pair<int, int>(x, y)) != move_variants.end()) return true;
+	//not found
+	return false;
+}
+
+bool Board::SetMoveVariants(int piece_x, int piece_y) {
+	Piece* p = arr[piece_y][piece_x];
+	if (p == nullptr) return false;
+	if (p->side == Piece::Sides::white && player == 2) return false;
+	if (p->side == Piece::Sides::black && player == 1) return false;
+	
+	//PAWN
+	if (p->type == Piece::Types::pawn) {
+
+		//WHITE PAWN
+		if (p->side == Piece::Sides::white){
+			//up 1
+			if (piece_y > 0 && arr[piece_y - 1][piece_x] == nullptr)
+				move_variants.insert(std::pair<int, int>(piece_x, piece_y-1));
+			//up 2
+			if (piece_y == size_y-1-1 && arr[piece_y - 2][piece_x] == nullptr)
+				move_variants.insert(std::pair<int, int>(piece_x, piece_y - 2));
+			//left up enemy
+			if (piece_y > 0 && piece_x > 0 && arr[piece_y - 1][piece_x - 1] != nullptr && arr[piece_y - 1][piece_x - 1]->side != p->side)
+				move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 1));
+			//right up enemy
+			if (piece_y > 0 && piece_x < size_x - 1 && arr[piece_y - 1][piece_x + 1] != nullptr && arr[piece_y - 1][piece_x + 1]->side != p->side)
+				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y - 1));
+		}
+
+		//BLACK PAWN
+		if (p->side == Piece::Sides::black) {
+			//down 1
+			if (piece_y < size_y-1 && arr[piece_y + 1][piece_x] == nullptr)
+				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 1));
+			//down 2
+			if (piece_y == 1 && arr[piece_y + 2][piece_x] == nullptr)
+				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 2));
+			//left up enemy
+			if (piece_y < size_y-1 && piece_x > 0 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
+				move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y + 1));
+			//right up enemy
+			if (piece_y < size_y-1 && piece_x < size_x - 1 && arr[piece_y + 1][piece_x + 1] != nullptr && arr[piece_y + 1][piece_x + 1]->side != p->side)
+				move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y + 1));
+		}
+	}
+	return true;
+}
+void Board::ShowMoveVariants() {
+	for (std::pair<int, int> coords : move_variants) {
+		ShowCell(coords.second, coords.first);
+	}
+}
+void Board::PawnTransform(int x, int y) {
+	if (x < 0 || x >= size_x || y < 0 || y >= size_y) return;
+	if (arr[y][x] == nullptr) return;
+	if (arr[y][x]->type != Piece::Types::pawn) return;
+	if (arr[y][x]->side == Piece::Sides::white && y != 0) return;
+	if (arr[y][x]->side == Piece::Sides::black && y != size_y-1) return;
+	arr[y][x]->type = Piece::Types::queen;
 }
