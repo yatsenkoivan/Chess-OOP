@@ -509,6 +509,34 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			}
 		}
 	}
+	//KING
+	if (p->type == Piece::Types::king) {
+		//right
+		if (piece_x + 1 <= size_x - 1 && (arr[piece_y][piece_x + 1] == nullptr || arr[piece_y][piece_x + 1]->side != p->side))
+			move_variants.insert(std::pair<int,int>(piece_x+1, piece_y));
+		//left
+		if (piece_x - 1 >= 0 && (arr[piece_y][piece_x - 1] == nullptr || arr[piece_y][piece_x - 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y));
+		//down
+		if (piece_y + 1 <= size_y - 1 && (arr[piece_y+1][piece_x] == nullptr || arr[piece_y+1][piece_x]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x, piece_y+1));
+		//up
+		if (piece_y - 1 >= 0 && (arr[piece_y - 1][piece_x] == nullptr || arr[piece_y - 1][piece_x]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x, piece_y - 1));
+
+		//right-down
+		if (piece_x + 1 <= size_x - 1 && piece_y+1 <= size_y-1 && (arr[piece_y+1][piece_x + 1] == nullptr || arr[piece_y+1][piece_x + 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y+1));
+		//left-down
+		if (piece_x - 1 >= 0 && piece_y+1 <= size_y-1 && (arr[piece_y+1][piece_x - 1] == nullptr || arr[piece_y+1][piece_x - 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y+1));
+		//right-up
+		if (piece_x + 1 <= size_x-1 && piece_y - 1 >= 0 && (arr[piece_y - 1][piece_x + 1] == nullptr || arr[piece_y - 1][piece_x + 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x + 1, piece_y - 1));
+		//left-up
+		if (piece_x - 1 >= 0 && piece_y - 1 >= 0 && (arr[piece_y - 1][piece_x - 1] == nullptr || arr[piece_y - 1][piece_x - 1]->side != p->side))
+			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 1));
+	}
 	return true;
 }
 void Board::ShowMoveVariants() {
