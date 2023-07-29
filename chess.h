@@ -40,6 +40,16 @@ class Board
 			std::pair<int, int>
 		> player2_previousMove;
 
+		std::pair<
+			bool,
+			bool
+		> player1_castling;
+
+		std::pair<
+			bool,
+			bool
+		> player2_castling;
+
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -53,6 +63,11 @@ class Board
 			cursor_y = size_y - 1;
 			start_cursor_x = -1;
 			start_cursor_y = -1;
+
+			player1_castling.first = true;
+			player1_castling.second = true;
+			player2_castling.first = true;
+			player2_castling.second = true;
 		}
 		~Board() {
 			for (int row = 0; row < size_y; row++) {
@@ -153,8 +168,6 @@ class Board
 						start_cursor_y = cursor_y;
 					}
 					else { //MAKE A MOVE
-						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 1) break;
-						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 2) break;
 						if (CheckMove() == false) break;
 
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
@@ -276,11 +289,64 @@ bool Board::CheckMove() {
 	if (ind == move_variants.end()) return false;
 
 	Piece* p = arr[start_cursor_y][start_cursor_x];
+	if (p == nullptr) return false;
+
+	//EN PASSANT
 	if (p->type == Piece::Types::pawn) {
 		if (abs(cursor_x - start_cursor_x) == 1 && arr[cursor_y][cursor_x] == nullptr) //corner & empty
 		{
 			arr[start_cursor_y][cursor_x] = nullptr;
 			ShowCell(start_cursor_y, cursor_x);
+		}
+	}
+
+	//KING CASTLING
+	if (p->type == Piece::Types::rook) {
+		if (start_cursor_x == 0)
+		{
+			if (player == 1) player1_castling.first = false;
+			if (player == 2) player2_castling.first = false;
+		}
+		if (start_cursor_x == size_x-1)
+		{
+			if (player == 1) player1_castling.second = false;
+			if (player == 2) player2_castling.second = false;
+		}
+	}
+	if (p->type == Piece::Types::king)
+	{
+		//left castling
+		if (((player == 1 && player1_castling.first)
+			||
+			(player == 2 && player2_castling.first))
+			&& cursor_x == 2)
+		{
+			arr[cursor_y][cursor_x+1] = arr[cursor_y][0];
+			arr[cursor_y][0] = nullptr;
+			ShowCell(cursor_y, 0);
+		}
+
+		//right castling
+		if (((player == 1 && player1_castling.second)
+			||
+			(player == 2 && player2_castling.second))
+			&& cursor_x == size_x - 1 - 1) 
+		{
+			arr[cursor_y][cursor_x - 1] = arr[cursor_y][size_x - 1];
+			arr[cursor_y][size_x - 1] = nullptr;
+			ShowCell(cursor_y, size_x-1);
+		}
+
+
+		if (player == 1)
+		{
+			player1_castling.first = false;
+			player1_castling.second = false;
+		}
+		if (player == 2)
+		{
+			player2_castling.first = false;
+			player2_castling.second = false;
 		}
 	}
 	return true;
@@ -536,6 +602,19 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 		//left-up
 		if (piece_x - 1 >= 0 && piece_y - 1 >= 0 && (arr[piece_y - 1][piece_x - 1] == nullptr || arr[piece_y - 1][piece_x - 1]->side != p->side))
 			move_variants.insert(std::pair<int, int>(piece_x - 1, piece_y - 1));
+		
+		bool left_castling = true;
+		bool right_castling = true;
+		for (int i = 1; piece_x - i > 0 && piece_x + i < size_x - 1 && (left_castling || right_castling); i++) {
+			if (arr[piece_y][piece_x + i] != nullptr) right_castling = false;
+			if (arr[piece_y][piece_x - i] != nullptr) left_castling = false;
+		}
+		if (left_castling && (player == 1 && player1_castling.first) || (player == 2 && player2_castling.first)
+			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
+			move_variants.insert(std::pair<int, int>(2, piece_y));
+		if (right_castling && (player == 1 && player1_castling.second) || (player == 2 && player2_castling.second)
+			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
+			move_variants.insert(std::pair<int, int>(size_x-1-1, piece_y));
 	}
 	return true;
 }
