@@ -447,6 +447,68 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			}
 		}
 	}
+	//BISHOP (& QUEEN)
+	if (p->type == Piece::Types::bishop || p->type == Piece::Types::queen) {
+		bool right_up = true, right_down = true, left_up = true, left_down = true;
+		for (int i = 1; i <= size_x && (right_up || right_down || left_up || left_down); i++) {
+			//right-up
+			if (piece_x + i <= size_x - 1 && piece_y - i >= 0 && right_up)
+			{
+				if (arr[piece_y-i][piece_x + i] == nullptr || arr[piece_y-i][piece_x + i]->side != p->side)
+				{
+					move_variants.insert(std::pair<int, int>(piece_x+i, piece_y-i));
+					//last
+					if (arr[piece_y-i][piece_x + i] != nullptr)
+						right_up = false;
+				}
+				else {
+					right_up = false;
+				}
+			}
+			//right-down
+			if (piece_x + i <= size_x-1 && piece_y + i <= size_y-1 && right_down)
+			{
+				if (arr[piece_y+i][piece_x + i] == nullptr || arr[piece_y+i][piece_x + i]->side != p->side)
+				{
+					move_variants.insert(std::pair<int, int>(piece_x + i, piece_y+i));
+					//last
+					if (arr[piece_y+i][piece_x + i] != nullptr)
+						right_down = false;
+				}
+				else {
+					right_down = false;
+				}
+			}
+			//left-up
+			if (piece_x - i >= 0 && piece_y - i >= 0 && left_up)
+			{
+				if (arr[piece_y - i][piece_x - i] == nullptr || arr[piece_y - i][piece_x - i]->side != p->side)
+				{
+					move_variants.insert(std::pair<int, int>(piece_x - i, piece_y - i));
+					//last
+					if (arr[piece_y - i][piece_x - i] != nullptr)
+						left_up = false;
+				}
+				else {
+					left_up = false;
+				}
+			}
+			//left-down
+			if (piece_x - i >= 0 && piece_y + i <= size_y-1 && left_down)
+			{
+				if (arr[piece_y + i][piece_x - i] == nullptr || arr[piece_y + i][piece_x - i]->side != p->side)
+				{
+					move_variants.insert(std::pair<int, int>(piece_x - i, piece_y + i));
+					//last
+					if (arr[piece_y + i][piece_x - i] != nullptr)
+						left_down = false;
+				}
+				else {
+					left_down = false;
+				}
+			}
+		}
+	}
 	return true;
 }
 void Board::ShowMoveVariants() {
