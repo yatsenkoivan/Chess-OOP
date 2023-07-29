@@ -19,6 +19,8 @@ class Board
 		void ShowMoveVariants();
 		void HideMoveVariants();
 		void PawnPromotion();
+		bool KingCheck(int, int);
+		void DelCheckmateMoves();
 		Piece::Types PawnPromotionAsk();
 		static int cell_size_x;
 		static int cell_size_y;
@@ -50,6 +52,12 @@ class Board
 			bool
 		> player2_castling;
 
+		bool player1_checked;
+		bool player2_checked;
+
+		std::pair<int, int> player1_king_coords;
+		std::pair<int, int> player2_king_coords;
+
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
 		{
@@ -68,6 +76,9 @@ class Board
 			player1_castling.second = true;
 			player2_castling.first = true;
 			player2_castling.second = true;
+
+			player1_checked = false;
+			player2_checked = false;
 		}
 		~Board() {
 			for (int row = 0; row < size_y; row++) {
@@ -82,10 +93,19 @@ class Board
 
 			bool Variant=false;
 			bool IsCursor = false;
+			bool Checked = false;
 
 			if (row == start_cursor_y && col == start_cursor_x) IsCursor = true;
 			if (row == cursor_y && col == cursor_x && CursorVisible) IsCursor = true;
 			if (move_variants.find(std::pair<int, int>(col, row)) != move_variants.end() && VariantVisible) Variant = true;
+			if (arr[row][col] != nullptr && arr[row][col]->type == Piece::Types::king) {
+				if ((arr[row][col]->side == Piece::Sides::white && player1_checked)
+					||
+					(arr[row][col]->side == Piece::Sides::black && player2_checked))
+				{
+					Checked = true;
+				}
+			}
 
 			Colors fg;
 			Colors bg;
@@ -97,8 +117,14 @@ class Board
 			Cursor::set(col * cell_size_x, row * cell_size_y + boardShow_offset_y);
 			SetColor(fg, bg);
 
+			//CURSOR
 			if (IsCursor) SetColor(Colors::cursor, bg);
+
+			//MOVE VARIANT
 			if (Variant) SetColor(Colors::variant_fg, Colors::variant_bg);
+
+			//CHECKED
+			if (Checked) SetColor(Colors::checked_fg, Colors::checked_bg);
 
 			for (int cell_row = 0; cell_row < cell_size_y; cell_row++) {
 				for (int cell_col = 0; cell_col < cell_size_x; cell_col++) {
@@ -109,6 +135,7 @@ class Board
 			}
 			Cursor::set(col * cell_size_x + (cell_size_x / 2), row * cell_size_y + (cell_size_y / 2) + boardShow_offset_y);
 			if (Variant) bg = Colors::variant_bg;
+			if (Checked) bg = Colors::checked_bg;
 			SetColor(fg,bg);
 			if (arr[row][col]) std::cout << *arr[row][col];
 			SetColor();
@@ -162,7 +189,11 @@ class Board
 				case 'f':
 				case 'F':
 					if (start_cursor_x == -1 && start_cursor_y == -1) {
+						if (arr[cursor_y][cursor_x] == nullptr) break;
+						if (arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 2) break;
+						if (arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 1) break;
 						if (SetMoveVariants(cursor_x, cursor_y) == false) break;
+						DelCheckmateMoves();
 						ShowMoveVariants();
 						start_cursor_x = cursor_x;
 						start_cursor_y = cursor_y;
@@ -170,14 +201,46 @@ class Board
 					else { //MAKE A MOVE
 						if (CheckMove() == false) break;
 
+						if (player == 1) {
+							player1_checked = false;
+							ShowCell(player1_king_coords.second, player1_king_coords.first);
+						}
+						if (player == 2) {
+							player2_checked = false;
+							ShowCell(player2_king_coords.second, player2_king_coords.first);
+						}
+
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
 						arr[start_cursor_y][start_cursor_x] = nullptr;
+
+						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->type == Piece::Types::king) {
+							if (player == 1) {
+								player1_king_coords.first = cursor_x;
+								player1_king_coords.second = cursor_y;
+							}
+							if (player == 2) {
+								player2_king_coords.first = cursor_x;
+								player2_king_coords.second = cursor_y;
+							}
+						}
 
 						//Check if pawn became a queen
 						PawnPromotion();
 
 						HideMoveVariants();
 						move_variants.clear();
+
+						if (KingCheck(cursor_x, cursor_y)) {
+							if (player == 1) {
+								player2_checked = true;
+								ShowCell(player2_king_coords.second, player2_king_coords.first);
+							}
+							if (player == 2) {
+								player1_checked = true;
+								ShowCell(player1_king_coords.second, player1_king_coords.first);
+							}
+						}
+
 						if (player == 1){
 							player1_previousMove.first = std::pair<int, int>(start_cursor_x, start_cursor_y);
 							player1_previousMove.second = std::pair<int, int>(cursor_x, cursor_y);
@@ -272,8 +335,12 @@ void Board::SetBoard() {
 	//KINGS
 		//white
 	arr[size_y - 1][4] = new Piece(Piece::Types::king, Piece::Sides::white);
+	player1_king_coords.first = 4;
+	player1_king_coords.second = size_y-1;
 		//black
 	arr[0][4] = new Piece(Piece::Types::king, Piece::Sides::black);
+	player2_king_coords.first = 4;
+	player2_king_coords.second = 0;
 	
 	//VOID
 	for (int row = 2; row < size_y - 2; row++) {
@@ -324,6 +391,7 @@ bool Board::CheckMove() {
 			arr[cursor_y][cursor_x+1] = arr[cursor_y][0];
 			arr[cursor_y][0] = nullptr;
 			ShowCell(cursor_y, 0);
+			KingCheck(0, cursor_y);
 		}
 
 		//right castling
@@ -335,6 +403,7 @@ bool Board::CheckMove() {
 			arr[cursor_y][cursor_x - 1] = arr[cursor_y][size_x - 1];
 			arr[cursor_y][size_x - 1] = nullptr;
 			ShowCell(cursor_y, size_x-1);
+			KingCheck(size_x-1, cursor_y);
 		}
 
 
@@ -348,16 +417,17 @@ bool Board::CheckMove() {
 			player2_castling.first = false;
 			player2_castling.second = false;
 		}
+
 	}
+
 	return true;
 }
 
 bool Board::SetMoveVariants(int piece_x, int piece_y) {
 	Piece* p = arr[piece_y][piece_x];
 	if (p == nullptr) return false;
-	if (p->side == Piece::Sides::white && player == 2) return false;
-	if (p->side == Piece::Sides::black && player == 1) return false;
 	
+	move_variants.clear();
 	//PAWN
 	if (p->type == Piece::Types::pawn) {
 
@@ -367,7 +437,7 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			if (piece_y >= 1 && arr[piece_y - 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y-1));
 			//up 2
-			if (piece_y == size_y-1-1 && arr[piece_y - 2][piece_x] == nullptr)
+			if (piece_y == size_y-1-1 && arr[piece_y - 2][piece_x] == nullptr && arr[piece_y-1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y - 2));
 			//left up enemy
 			if (piece_y >= 1 && piece_x >= 1 && arr[piece_y - 1][piece_x - 1] != nullptr && arr[piece_y - 1][piece_x - 1]->side != p->side)
@@ -391,7 +461,7 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			if (piece_y <= size_y - 1 - 1 && arr[piece_y + 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 1));
 			//down 2
-			if (piece_y == 1 && arr[piece_y + 2][piece_x] == nullptr)
+			if (piece_y == 1 && arr[piece_y + 2][piece_x] == nullptr && arr[piece_y + 1][piece_x] == nullptr)
 				move_variants.insert(std::pair<int, int>(piece_x, piece_y + 2));
 			//left up enemy
 			if (piece_y <= size_y - 1 - 1 && piece_x >= 1 && arr[piece_y + 1][piece_x - 1] != nullptr && arr[piece_y + 1][piece_x - 1]->side != p->side)
@@ -609,13 +679,14 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			if (arr[piece_y][piece_x + i] != nullptr) right_castling = false;
 			if (arr[piece_y][piece_x - i] != nullptr) left_castling = false;
 		}
-		if (left_castling && (player == 1 && player1_castling.first) || (player == 2 && player2_castling.first)
+		if (left_castling && ((player == 1 && player1_castling.first && player1_checked == false) || (player == 2 && player2_castling.first && player2_checked == false))
 			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
 			move_variants.insert(std::pair<int, int>(2, piece_y));
-		if (right_castling && (player == 1 && player1_castling.second) || (player == 2 && player2_castling.second)
+		if (right_castling && ((player == 1 && player1_castling.second) || (player == 2 && player2_castling.second))
 			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
 			move_variants.insert(std::pair<int, int>(size_x-1-1, piece_y));
 	}
+
 	return true;
 }
 void Board::ShowMoveVariants() {
@@ -660,4 +731,78 @@ Piece::Types Board::PawnPromotionAsk() {
 				return Piece::Types::knight;
 		}
 	}
+}
+bool Board::KingCheck(int piece_x, int piece_y) {
+	if (piece_x < 0 || piece_x > size_x - 1 || piece_y < 0 || piece_y > size_y - 1) return false;
+	Piece* p = arr[piece_y][piece_x];
+	if (p == nullptr) 
+		return false;
+
+	SetMoveVariants(piece_x, piece_y); //get all possible moves
+
+	bool flag = false;
+
+	for (std::pair<int, int> coords : move_variants) {
+		if (p->side == Piece::Sides::white) {
+			if (coords == player2_king_coords) {
+				flag = true;
+				break;
+			}
+		}
+		if (p->side == Piece::Sides::black) {
+			if (coords == player1_king_coords) {
+				flag = true;
+				break;
+			}
+		}
+	}
+
+	move_variants.clear();
+	return flag;
+}
+
+void Board::DelCheckmateMoves() {
+	Piece* temp;
+	std::set<std::pair<int, int>> new_variants = move_variants;
+	std::set<std::pair<int, int>> temp_move_variants = move_variants;
+	for (std::pair<int, int> coords : temp_move_variants) {
+
+		//simulate new board
+		temp = arr[coords.second][coords.first]; //new cell of the figure (null or enemy)
+		arr[coords.second][coords.first] = arr[cursor_y][cursor_x];
+		arr[cursor_y][cursor_x] = nullptr;
+
+		//king moves
+		if (arr[coords.second][coords.first]->type == Piece::Types::king) {
+			if (arr[coords.second][coords.first]->side == Piece::Sides::white)
+				player1_king_coords = std::pair<int, int>(coords.first, coords.second);
+			if (arr[coords.second][coords.first]->side == Piece::Sides::black)
+				player2_king_coords = std::pair<int, int>(coords.first, coords.second);
+		}
+
+		for (int row = 0; row < size_y; row++) {
+			for (int col = 0; col < size_x; col++) {
+				if (arr[row][col] == nullptr
+					|| (arr[row][col]->side == Piece::Sides::white && player == 1)
+					|| (arr[row][col]->side == Piece::Sides::black && player == 2)) continue;
+
+				if (KingCheck(col, row)) {
+					new_variants.erase(coords);
+				}
+			}
+		}
+
+		//king moves
+		if (arr[coords.second][coords.first]->type == Piece::Types::king) {
+			if (arr[coords.second][coords.first]->side == Piece::Sides::white)
+				player1_king_coords = std::pair<int, int>(cursor_x, cursor_y);
+			if (arr[coords.second][coords.first]->side == Piece::Sides::black)
+				player2_king_coords = std::pair<int, int>(cursor_x, cursor_y);
+		}
+
+		arr[cursor_y][cursor_x] = arr[coords.second][coords.first];
+		arr[coords.second][coords.first] = temp;
+
+	}
+	move_variants = new_variants;
 }
