@@ -21,6 +21,8 @@ class Board
 		void PawnPromotion();
 		bool KingCheck(int, int);
 		void DelCheckmateMoves();
+		bool GameEndCheck();
+		void GameEnd(std::string);
 		Piece::Types PawnPromotionAsk();
 		static int cell_size_x;
 		static int cell_size_y;
@@ -57,6 +59,8 @@ class Board
 
 		std::pair<int, int> player1_king_coords;
 		std::pair<int, int> player2_king_coords;
+
+		float _50moves = 0; //50 moves rule
 
 	public:
 		Board() : size_x{ 8 }, size_y{ 8 }
@@ -201,6 +205,10 @@ class Board
 					else { //MAKE A MOVE
 						if (CheckMove() == false) break;
 
+						_50moves += 0.5;
+
+						if (arr[start_cursor_y][start_cursor_x]->type == Piece::Types::pawn || arr[cursor_y][cursor_x] != nullptr) _50moves = 0;
+
 						if (arr[start_cursor_y][start_cursor_x] && arr[start_cursor_y][start_cursor_x]->type == Piece::Types::king) {
 							if (player == 1) {
 								player1_king_coords.first = cursor_x;
@@ -257,6 +265,11 @@ class Board
 						player = (player == 1 ? 2 : 1);
 						ShowCell(y, x);
 						ShowPlayer();
+
+
+						if (GameEndCheck())
+							exit(0);
+
 					}
 					break;
 				//CANCEL
@@ -805,4 +818,18 @@ void Board::DelCheckmateMoves() {
 
 	}
 	move_variants = new_variants;
+}
+
+bool Board::GameEndCheck() {
+	if (_50moves == 50) {
+		GameEnd("Draw. By 50-move rule");
+		return true;
+	}
+	return false;
+}
+
+void Board::GameEnd(std::string title) {
+	Cursor::set(0, 0);
+	std::cout << title;
+	_getch();
 }
