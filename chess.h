@@ -20,7 +20,7 @@ class Board
 		void HideMoveVariants();
 		void PawnPromotion();
 		bool KingCheck(int, int);
-		void DelCheckmateMoves();
+		void DelCheckmateMoves(int, int);
 		bool GameEndCheck();
 		void GameEnd(std::string);
 		Piece::Types PawnPromotionAsk();
@@ -197,7 +197,7 @@ class Board
 						if (arr[cursor_y][cursor_x]->side == Piece::Sides::white && player == 2) break;
 						if (arr[cursor_y][cursor_x]->side == Piece::Sides::black && player == 1) break;
 						if (SetMoveVariants(cursor_x, cursor_y) == false) break;
-						DelCheckmateMoves();
+						DelCheckmateMoves(cursor_x, cursor_y);
 						ShowMoveVariants();
 						start_cursor_x = cursor_x;
 						start_cursor_y = cursor_y;
@@ -774,7 +774,7 @@ bool Board::KingCheck(int piece_x, int piece_y) {
 	return flag;
 }
 
-void Board::DelCheckmateMoves() {
+void Board::DelCheckmateMoves(int piece_x, int piece_y) {
 	Piece* temp;
 	std::set<std::pair<int, int>> new_variants = move_variants;
 	std::set<std::pair<int, int>> temp_move_variants = move_variants;
@@ -782,8 +782,8 @@ void Board::DelCheckmateMoves() {
 
 		//simulate new board
 		temp = arr[coords.second][coords.first]; //new cell of the figure (null or enemy)
-		arr[coords.second][coords.first] = arr[cursor_y][cursor_x];
-		arr[cursor_y][cursor_x] = nullptr;
+		arr[coords.second][coords.first] = arr[piece_y][piece_x];
+		arr[piece_y][piece_x] = nullptr;
 
 		//king moves
 		if (arr[coords.second][coords.first] && arr[coords.second][coords.first]->type == Piece::Types::king) {
@@ -808,12 +808,12 @@ void Board::DelCheckmateMoves() {
 		//king moves
 		if (arr[coords.second][coords.first] && arr[coords.second][coords.first]->type == Piece::Types::king) {
 			if (arr[coords.second][coords.first]->side == Piece::Sides::white)
-				player1_king_coords = std::pair<int, int>(cursor_x, cursor_y);
+				player1_king_coords = std::pair<int, int>(piece_x, piece_y);
 			if (arr[coords.second][coords.first]->side == Piece::Sides::black)
-				player2_king_coords = std::pair<int, int>(cursor_x, cursor_y);
+				player2_king_coords = std::pair<int, int>(piece_x, piece_y);
 		}
 
-		arr[cursor_y][cursor_x] = arr[coords.second][coords.first];
+		arr[piece_y][piece_x] = arr[coords.second][coords.first];
 		arr[coords.second][coords.first] = temp;
 
 	}
@@ -825,6 +825,31 @@ bool Board::GameEndCheck() {
 		GameEnd("Draw. By 50-move rule");
 		return true;
 	}
+
+	//CheckMate / StaleMate check
+	for (int row = 0; row < size_y && move_variants.empty(); row++) {
+		for (int col = 0; col < size_x && move_variants.empty(); col++) {
+			if (arr[row][col] == nullptr) continue;
+			if ((arr[row][col]->side == Piece::Sides::white && player == 1)
+				||
+				(arr[row][col]->side == Piece::Sides::black && player == 2))
+			{
+				SetMoveVariants(col, row);
+				DelCheckmateMoves(col, row);
+			}
+		}
+	}
+	//NO MOVES
+	if (move_variants.empty()) {
+		if (player == 1 && player1_checked)
+			GameEnd("Player 2 Won! by a checkmate");
+		else if (player == 2 && player2_checked)
+			GameEnd("Player 1 Won! by a checkmate");
+		else
+			GameEnd("Draw. By a stalemate");
+		return true;
+	}
+	move_variants.clear();
 	return false;
 }
 
