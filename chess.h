@@ -201,6 +201,17 @@ class Board
 					else { //MAKE A MOVE
 						if (CheckMove() == false) break;
 
+						if (arr[start_cursor_y][start_cursor_x] && arr[start_cursor_y][start_cursor_x]->type == Piece::Types::king) {
+							if (player == 1) {
+								player1_king_coords.first = cursor_x;
+								player1_king_coords.second = cursor_y;
+							}
+							if (player == 2) {
+								player2_king_coords.first = cursor_x;
+								player2_king_coords.second = cursor_y;
+							}
+						}
+
 						if (player == 1) {
 							player1_checked = false;
 							ShowCell(player1_king_coords.second, player1_king_coords.first);
@@ -212,17 +223,6 @@ class Board
 
 						arr[cursor_y][cursor_x] = arr[start_cursor_y][start_cursor_x];
 						arr[start_cursor_y][start_cursor_x] = nullptr;
-
-						if (arr[cursor_y][cursor_x] && arr[cursor_y][cursor_x]->type == Piece::Types::king) {
-							if (player == 1) {
-								player1_king_coords.first = cursor_x;
-								player1_king_coords.second = cursor_y;
-							}
-							if (player == 2) {
-								player2_king_coords.first = cursor_x;
-								player2_king_coords.second = cursor_y;
-							}
-						}
 
 						//Check if pawn became a queen
 						PawnPromotion();
@@ -391,7 +391,7 @@ bool Board::CheckMove() {
 			arr[cursor_y][cursor_x+1] = arr[cursor_y][0];
 			arr[cursor_y][0] = nullptr;
 			ShowCell(cursor_y, 0);
-			KingCheck(0, cursor_y);
+			ShowCell(cursor_y, cursor_x);
 		}
 
 		//right castling
@@ -402,8 +402,8 @@ bool Board::CheckMove() {
 		{
 			arr[cursor_y][cursor_x - 1] = arr[cursor_y][size_x - 1];
 			arr[cursor_y][size_x - 1] = nullptr;
-			ShowCell(cursor_y, size_x-1);
-			KingCheck(size_x-1, cursor_y);
+			ShowCell(cursor_y, size_x - 1);
+			ShowCell(cursor_y, cursor_x-1);
 		}
 
 
@@ -773,7 +773,7 @@ void Board::DelCheckmateMoves() {
 		arr[cursor_y][cursor_x] = nullptr;
 
 		//king moves
-		if (arr[coords.second][coords.first]->type == Piece::Types::king) {
+		if (arr[coords.second][coords.first] && arr[coords.second][coords.first]->type == Piece::Types::king) {
 			if (arr[coords.second][coords.first]->side == Piece::Sides::white)
 				player1_king_coords = std::pair<int, int>(coords.first, coords.second);
 			if (arr[coords.second][coords.first]->side == Piece::Sides::black)
@@ -793,7 +793,7 @@ void Board::DelCheckmateMoves() {
 		}
 
 		//king moves
-		if (arr[coords.second][coords.first]->type == Piece::Types::king) {
+		if (arr[coords.second][coords.first] && arr[coords.second][coords.first]->type == Piece::Types::king) {
 			if (arr[coords.second][coords.first]->side == Piece::Sides::white)
 				player1_king_coords = std::pair<int, int>(cursor_x, cursor_y);
 			if (arr[coords.second][coords.first]->side == Piece::Sides::black)
