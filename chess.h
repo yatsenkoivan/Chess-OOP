@@ -148,10 +148,22 @@ class Board
 			Cursor::set(0, 0);
 			std::cout << "Player " << player << ":";
 		}
+		void ShowControls()
+		{
+			Cursor::set(size_x * cell_size_x + 2, boardShow_offset_y);
+			std::cout << "WASD - to move";
+			Cursor::set(size_x * cell_size_x + 2, boardShow_offset_y + 1);
+			std::cout << "F - to choose a cell";
+			Cursor::set(size_x * cell_size_x + 2, boardShow_offset_y + 2);
+			std::cout << "X - to cancel a choice";
+			Cursor::set(size_x * cell_size_x + 2, boardShow_offset_y + 3);
+			std::cout << "R - to reshow";
+		}
 		void Show() {
 			system("cls");
 			ShowPlayer();
-			
+			ShowControls();
+
 			for (int row = 0; row < size_y; row++) {
 				for (int col = 0; col < size_x; col++) {
 					ShowCell(row, col);
