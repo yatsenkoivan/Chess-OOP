@@ -708,7 +708,7 @@ bool Board::SetMoveVariants(int piece_x, int piece_y) {
 			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
 			move_variants.insert(std::pair<int, int>(2, piece_y));
 		if (right_castling && ((player == 1 && player1_castling.second && player1_checked == false) || (player == 2 && player2_castling.second && player2_checked == false))
-			&& arr[piece_y][0] != nullptr && arr[piece_y][0]->type == Piece::Types::rook)
+			&& arr[piece_y][size_x-1] != nullptr && arr[piece_y][size_x-1]->type == Piece::Types::rook)
 			move_variants.insert(std::pair<int, int>(size_x-1-1, piece_y));
 	}
 
